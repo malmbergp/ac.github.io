@@ -1,0 +1,1176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytical bench: chromatography and mass spectrometry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E9EEF1; --surface:#F7F9FA; --ink:#13233A; --muted:#55657A; --line:#C6D0D8;
+  --accent:#2445C8; --accent-ink:#FFFFFF; --glass:#DCE5EA; --bed:#AEBBC5;
+  --c1:#C2185B; --c2:#00897B; --c3:#C27C00; --c4:#6A3DB8; --warn:#B3261E; --ok:#2E7D32;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1926; --surface:#16222F; --ink:#E4EBF1; --muted:#9AAAB9; --line:#2C3B4C;
+    --accent:#86A0FF; --accent-ink:#0F1926; --glass:#1E2D3C; --bed:#3A4E62;
+    --c1:#F06292; --c2:#4DB6AC; --c3:#FFC14D; --c4:#B39DDB; --warn:#FF8A80; --ok:#81C784;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1926; --surface:#16222F; --ink:#E4EBF1; --muted:#9AAAB9; --line:#2C3B4C;
+  --accent:#86A0FF; --accent-ink:#0F1926; --glass:#1E2D3C; --bed:#3A4E62;
+  --c1:#F06292; --c2:#4DB6AC; --c3:#FFC14D; --c4:#B39DDB; --warn:#FF8A80; --ok:#81C784;
+  color-scheme:dark;
+}
+:root{ box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+*,*::before,*::after{ box-sizing:inherit; }
+html{ scroll-padding-top:calc(env(safe-area-inset-top,0px) + 72px); scroll-behavior:smooth; }
+@media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
+body{ margin:0; background:var(--paper); color:var(--ink); font:17px/1.6 "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+h1,h2,h3,h4{ font-family:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif; line-height:1.08; margin:0; letter-spacing:-0.015em; }
+p{ margin:0 0 1em; }
+a{ color:var(--accent); }
+:focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
+.wrap{ max-width:1180px; margin:0 auto; padding:0 20px; }
+
+.top{ position:sticky; top:env(safe-area-inset-top,0px); z-index:10; background:color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+.top .wrap{ display:flex; align-items:center; justify-content:space-between; gap:16px; height:56px; }
+.brand{ font-family:"Bricolage Grotesque", system-ui, sans-serif; font-weight:700; font-size:1.1rem; text-decoration:none; color:var(--ink); display:flex; align-items:center; gap:10px; }
+.brand svg{ width:22px; height:22px; }
+.top nav{ display:flex; gap:20px; font-size:.95rem; }
+.top nav a{ color:var(--muted); text-decoration:none; }
+.top nav a:hover{ color:var(--ink); }
+
+.intro{ padding:56px 0 28px; }
+.intro h1{ font-size:clamp(2.3rem, 5.6vw, 4.2rem); font-weight:800; max-width:16ch; }
+.intro p{ max-width:60ch; font-size:1.12rem; color:var(--muted); margin-top:18px; }
+
+section.lab{ padding:24px 0 64px; }
+section.lab + section.lab{ border-top:1px solid var(--line); padding-top:56px; }
+.lab-head{ display:grid; grid-template-columns:minmax(0,1fr); gap:10px; margin-bottom:24px; }
+.lab-head h2{ font-size:clamp(1.8rem, 3.6vw, 2.6rem); font-weight:750; }
+.lab-head p{ max-width:68ch; color:var(--muted); margin:0; }
+
+.grid{ display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:24px; align-items:start; }
+@media (max-width: 920px){ .grid{ grid-template-columns:minmax(0,1fr); } }
+
+.panel{ background:var(--surface); border:1px solid var(--line); border-radius:12px; }
+.stage{ padding:16px; }
+canvas{ display:block; width:100%; }
+#column{ height:150px; }
+#chrom{ height:250px; margin-top:6px; }
+#vd{ height:180px; }
+#msAnim{ height:250px; }
+#spec{ height:310px; touch-action:none; cursor:crosshair; }
+
+.live{ display:flex; flex-wrap:wrap; gap:6px 22px; font-size:.95rem; color:var(--muted); padding:4px 4px 0; font-variant-numeric:tabular-nums; }
+.live strong{ color:var(--ink); font-weight:700; }
+.msg{ margin:12px 4px 0; font-size:.98rem; min-height:1.6em; }
+.msg.warn{ color:var(--warn); }
+
+.controls{ padding:18px; display:flex; flex-direction:column; gap:18px; }
+.ctl{ display:flex; flex-direction:column; gap:6px; }
+.ctl-row{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.ctl label, .ctl .lbl{ font-weight:700; font-size:.95rem; }
+.ctl output{ font-variant-numeric:tabular-nums; color:var(--muted); font-size:.95rem; }
+.ctl small{ color:var(--muted); font-size:.85rem; line-height:1.4; }
+input[type=range]{ width:100%; accent-color:var(--accent); }
+.chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.chip{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px 6px 8px; border:1px solid var(--line); border-radius:999px; cursor:pointer; font-size:.92rem; background:var(--paper); user-select:none; }
+.chip input{ position:absolute; opacity:0; pointer-events:none; }
+.chip .sw{ width:14px; height:14px; border-radius:50%; border:2px solid var(--c); background:transparent; }
+.chip:has(input:checked) .sw{ background:var(--c); }
+.chip:has(input:checked){ border-color:var(--ink); }
+.chip:has(input:focus-visible){ outline:3px solid var(--accent); outline-offset:2px; }
+.seg{ display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--paper); }
+.seg button{ flex:1; font:inherit; font-size:.9rem; padding:7px 8px; border:0; background:transparent; color:var(--ink); cursor:pointer; }
+.seg button + button{ border-left:1px solid var(--line); }
+.seg button[aria-pressed="true"]{ background:var(--ink); color:var(--paper); }
+.readouts{ display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; font-size:.9rem; border-top:1px solid var(--line); padding-top:14px; }
+.readouts div span{ display:block; color:var(--muted); font-size:.82rem; }
+.readouts div b{ font-variant-numeric:tabular-nums; }
+.readouts .wide{ grid-column:1/-1; }
+.badge{ display:inline-block; font-size:.8rem; padding:1px 8px; border-radius:999px; margin-left:6px; border:1px solid currentColor; font-weight:700; }
+.badge.ok{ color:var(--ok); } .badge.warn{ color:var(--warn); }
+.btn{ font:inherit; font-weight:700; padding:10px 18px; border-radius:8px; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink); cursor:pointer; }
+.btn:disabled{ opacity:.45; cursor:not-allowed; }
+.btn.ghost{ background:transparent; color:var(--accent); }
+.btn-row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+table.peaks{ width:100%; border-collapse:collapse; font-size:.92rem; font-variant-numeric:tabular-nums; margin-top:14px; }
+.table-scroll{ overflow-x:auto; }
+table.peaks th, table.peaks td{ text-align:right; padding:7px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+table.peaks th:first-child, table.peaks td:first-child{ text-align:left; }
+table.peaks th{ font-weight:700; color:var(--muted); font-size:.85rem; }
+table.peaks .dot{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; vertical-align:middle; }
+td.bad{ color:var(--warn); font-weight:700; }
+
+.side{ display:flex; flex-direction:column; gap:16px; }
+.vd-box{ padding:14px; }
+.vd-box p{ font-size:.86rem; color:var(--muted); margin:6px 2px 0; line-height:1.45; }
+.try{ padding:16px 18px; }
+.try h3{ font-size:1.05rem; margin-bottom:8px; }
+.try ul{ margin:0; padding-left:1.1em; font-size:.92rem; line-height:1.5; }
+.try li + li{ margin-top:6px; }
+
+/* Mass spec builder */
+.ms-grid{ display:grid; grid-template-columns:300px minmax(0,1fr); gap:24px; align-items:start; }
+@media (max-width: 920px){ .ms-grid{ grid-template-columns:minmax(0,1fr); } }
+.tray{ padding:18px; display:flex; flex-direction:column; gap:16px; }
+.tray h3{ font-size:1.15rem; }
+.part-group h4{ font-size:.95rem; font-weight:650; margin-bottom:8px; color:var(--muted); }
+.parts{ display:flex; flex-direction:column; gap:8px; }
+.part{ font:inherit; text-align:left; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; border:1px solid var(--line); background:var(--paper); color:var(--ink); cursor:grab; font-size:.93rem; }
+.part:hover{ border-color:var(--ink); }
+.part[aria-pressed="true"]{ border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+.part .ico{ width:28px; height:20px; flex:none; color:var(--muted); }
+.part-info{ font-size:.88rem; line-height:1.45; color:var(--muted); border-top:1px solid var(--line); padding-top:14px; min-height:6em; }
+.part-info b{ color:var(--ink); display:block; margin-bottom:2px; }
+
+.bench{ display:flex; flex-direction:column; gap:16px; min-width:0; }
+.slots{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:22px; position:relative; }
+.slot{ position:relative; min-height:78px; border:2px dashed var(--line); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; justify-content:center; gap:2px; background:transparent; transition:border-color .15s, background .15s; }
+.slot + .slot::before{ content:""; position:absolute; left:-17px; top:50%; width:10px; height:10px; border-top:2px solid var(--muted); border-right:2px solid var(--muted); transform:translateY(-50%) rotate(45deg); }
+.slot .role{ font-size:.82rem; color:var(--muted); }
+.slot .name{ font-weight:700; font-size:.98rem; line-height:1.25; }
+.slot.filled{ border-style:solid; border-color:var(--ink); background:var(--surface); }
+.slot.target{ border-color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, transparent); }
+.slot .rm{ position:absolute; top:6px; right:6px; font:inherit; font-size:.8rem; border:0; background:transparent; color:var(--muted); cursor:pointer; padding:2px 6px; border-radius:6px; text-decoration:underline; }
+.slot:not(.filled) .rm{ display:none; }
+@media (max-width: 560px){ .slots{ grid-template-columns:minmax(0,1fr); gap:14px; } .slot + .slot::before{ left:50%; top:-12px; transform:translateX(-50%) rotate(135deg); } }
+.anim-box{ padding:10px; }
+.ms-bar{ display:flex; flex-wrap:wrap; gap:12px 20px; align-items:center; justify-content:space-between; }
+.ms-bar .seg{ flex-wrap:wrap; }
+.ms-bar .seg button{ flex:none; padding:7px 12px; }
+.status{ font-size:.95rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.spec-box{ padding:12px 12px 10px; }
+.spec-bar{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; font-size:.9rem; color:var(--muted); padding:6px 6px 0; font-variant-numeric:tabular-nums; }
+.notes{ display:flex; flex-direction:column; gap:10px; }
+.note{ padding:12px 16px; border-left:3px solid var(--accent); background:var(--surface); border-radius:0 8px 8px 0; font-size:.95rem; line-height:1.5; max-width:75ch; }
+
+footer{ border-top:1px solid var(--line); padding:28px 0 40px; color:var(--muted); font-size:.88rem; }
+footer p{ max-width:80ch; }
+.sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></svg>
+      Analytical bench
+    </a>
+    <nav aria-label="Sections"><a href="#lc">Chromatography</a><a href="#ms">Mass spectrometry</a></nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap intro">
+    <h1>Separate a mixture, then weigh what comes out.</h1>
+    <p>Two workhorse techniques of analytical chemistry as working models. Change the conditions on the chromatograph, assemble your own mass spectrometer, and see the effect immediately.</p>
+  </div>
+
+  <!-- ============ CHROMATOGRAPHY ============ -->
+  <section class="lab wrap" id="lc" aria-labelledby="lc-h">
+    <div class="lab-head">
+      <h2 id="lc-h">Liquid chromatography</h2>
+      <p>A mixture of four painkiller ingredients is pushed through a column packed with oily C18 beads. Compounds that prefer the beads over the water–acetonitrile solvent move slowly; the rest race ahead. The detector at the end draws each compound as a peak. Colours are added so you can follow the bands; the real compounds are colourless.</p>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="panel stage">
+          <canvas id="column" aria-label="Animated chromatography column showing compound bands moving and separating"></canvas>
+          <div class="live" aria-live="off"><span>Time <strong id="lcTime">0.00 min</strong></span><span>Solvent entering the column <strong id="lcPhiNow">30% acetonitrile</strong></span></div>
+          <canvas id="chrom" aria-label="Chromatogram: detector signal against time"></canvas>
+          <p class="msg" id="lcMsg" role="status"></p>
+          <div class="table-scroll">
+            <table class="peaks">
+              <thead><tr><th>Compound</th><th>Retention time</th><th>Retention factor k</th><th>Plates N</th><th>Resolution to previous</th></tr></thead>
+              <tbody id="lcTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="panel controls">
+          <div class="ctl">
+            <span class="lbl">Sample to inject</span>
+            <div class="chips" id="lcChips"></div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-row"><label for="phi">Acetonitrile in the solvent</label><output id="phiOut">30%</output></div>
+            <input type="range" id="phi" min="5" max="90" step="5" value="30">
+            <small>More acetonitrile makes the solvent less polar, so everything elutes sooner.</small>
+          </div>
+          <div class="ctl">
+            <span class="lbl">Solvent program</span>
+            <div class="seg" role="group" aria-label="Solvent program">
+              <button type="button" data-mode="iso" aria-pressed="false">Constant</button>
+              <button type="button" data-mode="grad" aria-pressed="true">Ramp to 90% over 8 min</button>
+            </div>
+          </div>
+          <div class="ctl">
+            <div class="ctl-row"><label for="flow">Flow rate</label><output id="flowOut">1.0 mL/min</output></div>
+            <input type="range" id="flow" min="0.2" max="2.0" step="0.1" value="1.0">
+          </div>
+          <div class="ctl">
+            <div class="ctl-row"><label for="len">Column length</label><output id="lenOut">15 cm</output></div>
+            <input type="range" id="len" min="5" max="25" step="5" value="15">
+          </div>
+          <div class="ctl">
+            <span class="lbl">Particle size</span>
+            <div class="seg" role="group" aria-label="Particle size" id="dpSeg">
+              <button type="button" data-dp="1.7" aria-pressed="false">1.7 µm</button>
+              <button type="button" data-dp="3" aria-pressed="false">3 µm</button>
+              <button type="button" data-dp="5" aria-pressed="true">5 µm</button>
+              <button type="button" data-dp="10" aria-pressed="false">10 µm</button>
+            </div>
+          </div>
+          <div class="readouts">
+            <div class="wide"><span>Back-pressure</span><b id="rP">250 bar</b><em id="rPb" class="badge ok" style="font-style:normal">HPLC</em></div>
+            <div><span>Dead time t₀</span><b id="rT0">1.00 min</b></div>
+            <div><span>Theoretical plates</span><b id="rN">5,400</b></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="injectBtn" type="button">Inject sample</button>
+            <div class="seg" role="group" aria-label="Playback speed" id="speedSeg" style="flex:none">
+              <button type="button" data-speed="1" aria-pressed="true">1×</button>
+              <button type="button" data-speed="3" aria-pressed="false">3×</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel vd-box">
+          <canvas id="vd" aria-label="Van Deemter plot of plate height against flow velocity"></canvas>
+          <p>Van Deemter curve. Plate height H measures how much a band spreads per centimetre of column; lower is sharper. The dot is your current flow.</p>
+        </div>
+
+        <div class="panel try">
+          <h3>Things to try</h3>
+          <ul>
+            <li>Switch to a constant solvent: ibuprofen gets stuck. Raise the acetonitrile until it comes out, and watch paracetamol and caffeine merge.</li>
+            <li>Try 1.7 µm particles. Peaks sharpen, but the pressure climbs past what a normal HPLC pump can deliver.</li>
+            <li>Push the flow to 2 mL/min with 10 µm particles and find the dot on the van Deemter curve.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MASS SPECTROMETRY ============ -->
+  <section class="lab wrap" id="ms" aria-labelledby="ms-h">
+    <div class="lab-head">
+      <h2 id="ms-h">Build a mass spectrometer</h2>
+      <p>Every mass spectrometer does three jobs in a row: turn molecules into ions, sort the ions by mass-to-charge ratio (m/z), and count them. Pick one part for each job, choose a sample, and the instrument records a spectrum. Some combinations work far better than others.</p>
+    </div>
+
+    <div class="ms-grid">
+      <div class="panel tray">
+        <h3>Parts</h3>
+        <div id="partGroups"></div>
+        <div class="part-info" id="partInfo" aria-live="polite"><b>How to build</b>Tap a part to install it, or drag it onto the matching spot on the bench.</div>
+      </div>
+
+      <div class="bench">
+        <div class="slots" id="slots">
+          <div class="slot" data-slot="source"><span class="role">Ion source</span><span class="name">Empty</span><button type="button" class="rm">Remove</button></div>
+          <div class="slot" data-slot="analyzer"><span class="role">Mass analyzer</span><span class="name">Empty</span><button type="button" class="rm">Remove</button></div>
+          <div class="slot" data-slot="detector"><span class="role">Detector</span><span class="name">Empty</span><button type="button" class="rm">Remove</button></div>
+        </div>
+
+        <div class="panel anim-box"><canvas id="msAnim" aria-label="Animated view of the assembled mass spectrometer with ions flying through it"></canvas></div>
+
+        <div class="ms-bar">
+          <div class="seg" role="group" aria-label="Sample" id="sampleSeg"></div>
+          <div class="btn-row">
+            <span class="status" id="msStatus" role="status">Install all three parts to start.</span>
+            <button class="btn" id="recordBtn" type="button" disabled>Record spectrum</button>
+          </div>
+        </div>
+
+        <div class="panel spec-box">
+          <canvas id="spec" aria-label="Mass spectrum: relative abundance against m/z"></canvas>
+          <div class="spec-bar"><span id="specInfo">Drag across the spectrum to zoom in.</span><button type="button" class="btn ghost" id="zoomReset" style="padding:5px 12px;font-size:.88rem">Show full range</button></div>
+        </div>
+
+        <div class="notes" id="msNotes" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>These are teaching models. Retention follows a linear solvent-strength model, band broadening follows a van Deemter curve, and back-pressure is a rough estimate. Mass spectra are idealized: fragment patterns are simplified and isotope patterns count carbon-13 only.</p>
+  </div>
+</footer>
+
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const FONT = '12px "Atkinson Hyperlegible", system-ui, sans-serif';
+const FONTB = 'bold 12px "Atkinson Hyperlegible", system-ui, sans-serif';
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let PAL = {};
+function readPal(){
+  const s = getComputedStyle(document.documentElement);
+  const g = n => s.getPropertyValue(n).trim();
+  PAL = { ink:g('--ink'), muted:g('--muted'), line:g('--line'), accent:g('--accent'), surface:g('--surface'),
+    paper:g('--paper'), glass:g('--glass'), bed:g('--bed'), warn:g('--warn'), c1:g('--c1'), c2:g('--c2'), c3:g('--c3'), c4:g('--c4') };
+}
+readPal();
+
+function hash(i){ const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }
+function gn(i){ return (hash(i) + hash(i + 0.37) + hash(i + 0.71) + hash(i + 0.13) - 2) * 1.73; }
+function niceStep(raw){
+  const p = Math.pow(10, Math.floor(Math.log10(raw))); const f = raw / p;
+  return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p;
+}
+function fmt(n, d=0){ return n.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+function withAlpha(col, a){ // works with hex colours
+  if (col.startsWith('#')){
+    let h = col.slice(1); if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    const n = parseInt(h, 16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;
+  }
+  return col;
+}
+
+const canvases = {};
+function fit(id){
+  const cv = document.getElementById(id); const r = cv.getBoundingClientRect(); const d = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d));
+  const ctx = cv.getContext('2d'); ctx.setTransform(d, 0, 0, d, 0, 0);
+  canvases[id] = { cv, ctx, w:r.width, h:r.height };
+}
+function line(ctx, x1, y1, x2, y2){ ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+function rrect(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+
+/* =====================================================================
+   LIQUID CHROMATOGRAPHY
+   ===================================================================== */
+const COMPOUNDS = [
+  {id:'para', name:'Paracetamol', logkw:1.2, S:3.0, amt:1.0, col:'c1'},
+  {id:'caff', name:'Caffeine',    logkw:1.6, S:3.5, amt:0.8, col:'c2'},
+  {id:'asp',  name:'Aspirin',     logkw:2.0, S:3.6, amt:0.9, col:'c3'},
+  {id:'ibu',  name:'Ibuprofen',   logkw:4.2, S:5.0, amt:0.7, col:'c4'}
+];
+const GRAD_END = 0.9, GRAD_TIME = 8, T_LIMIT = 30, SIM_RATE = 0.8; // sim minutes per real second
+const lc = { phi:0.3, mode:'grad', F:1, L:15, dp:5, speed:1, sel:new Set(COMPOUNDS.map(c => c.id)),
+  running:false, t:0, bands:[], T:[], Y:[], YB:[], results:[], yMax:1, tView:10, lastElute:0 };
+
+const u0 = () => lc.F * 15;                    // cm/min
+const uMM = (F = lc.F) => F * 2.5;             // mm/s
+const Hum = (u, dp) => 2 * dp + 20 / u + 0.16 * dp * dp * u; // µm
+const Hcm = () => Hum(uMM(), lc.dp) * 1e-4;
+const pressure = () => 250 * lc.F * (lc.L / 15) * Math.pow(5 / lc.dp, 2);
+function phiAt(t){
+  if (lc.mode === 'iso' || t <= 0 || lc.phi >= GRAD_END) return lc.phi;
+  return Math.min(GRAD_END, lc.phi + (GRAD_END - lc.phi) * t / GRAD_TIME);
+}
+
+const bedDots = Array.from({length:520}, (_, i) => [hash(i * 3.1), hash(i * 7.7 + 1)]);
+
+function setLcMsg(text, cls){ const m = $('#lcMsg'); m.textContent = text; m.className = 'msg' + (cls ? ' ' + cls : ''); }
+
+function updateReadouts(){
+  $('#phiOut').textContent = Math.round(lc.phi * 100) + '%';
+  $('#flowOut').textContent = lc.F.toFixed(1) + ' mL/min';
+  $('#lenOut').textContent = lc.L + ' cm';
+  const P = pressure();
+  $('#rP').textContent = fmt(Math.round(P)) + ' bar';
+  const b = $('#rPb');
+  if (P <= 400){ b.textContent = 'HPLC pump OK'; b.className = 'badge ok'; }
+  else if (P <= 1300){ b.textContent = 'needs a UHPLC pump'; b.className = 'badge warn'; }
+  else { b.textContent = 'too high for any pump'; b.className = 'badge warn'; }
+  $('#rT0').textContent = (lc.L / u0()).toFixed(2) + ' min';
+  $('#rN').textContent = fmt(Math.round(lc.L / Hcm()));
+}
+
+function inject(){
+  const P = pressure();
+  lc.bands = []; lc.T = []; lc.Y = []; lc.YB = []; lc.results = []; lc.t = 0; lc.yMax = 1; lc.tView = 10; lc.running = false;
+  if (P > 1300){
+    setLcMsg(`The back-pressure would be about ${fmt(Math.round(P))} bar, more than any pump can deliver. Lower the flow, shorten the column or use larger particles.`, 'warn');
+    renderTable(); drawLC(); return;
+  }
+  if (lc.sel.size === 0){ setLcMsg('Choose at least one compound to inject.', 'warn'); renderTable(); drawLC(); return; }
+  lc.bands = COMPOUNDS.filter(c => lc.sel.has(c.id)).map(c => ({c, x:0, v:u0(), gone:false, eluted:false}));
+  lc.YB = lc.bands.map(() => []);
+  lc.running = true; lc.lastElute = 0;
+  setLcMsg('Sample injected. Watch the bands pull apart as they travel.', '');
+  renderTable();
+  if (reduceMotion){ while (lc.running) lcStep(0.05); drawLC(); }
+  else startLoop();
+}
+
+function lcStep(dt){
+  const n = Math.max(1, Math.ceil(dt / 0.004)), h = dt / n, U = u0(), H = Hcm(), L = lc.L;
+  for (let s = 0; s < n && lc.running; s++){
+    lc.t += h; let tot = 0;
+    lc.bands.forEach((b, j) => {
+      let sig = 0;
+      if (!b.gone){
+        const ph = phiAt(lc.t - b.x / U);
+        const k = Math.pow(10, b.c.logkw - b.c.S * ph);
+        const v = U / (1 + k);
+        const xp = b.x; b.x += v * h; b.v = v;
+        if (!b.eluted && b.x >= L){
+          b.eluted = true;
+          const tR = lc.t - h * (b.x - L) / (b.x - xp);
+          const sT = Math.sqrt(H * L) / v;
+          const t0 = L / U;
+          lc.results.push({c:b.c, tR, sT, k:(tR - t0) / t0, N:Math.pow(tR / sT, 2)});
+          lc.results.sort((a, b2) => a.tR - b2.tR);
+          lc.lastElute = tR; renderTable();
+        }
+        const sx = Math.sqrt(H * Math.max(b.x, 0.01));
+        const sT = sx / v;
+        sig = b.c.amt / (2.5066 * sT) * Math.exp(-((L - b.x) ** 2) / (2 * sx * sx));
+        if (b.x > L + 6 * sx) b.gone = true;
+      }
+      lc.YB[j].push(sig); tot += sig;
+    });
+    tot += gn(lc.T.length) * 0.012;
+    lc.T.push(lc.t); lc.Y.push(tot);
+    if (tot > lc.yMax) lc.yMax = tot;
+    if (lc.bands.every(b => b.gone) && lc.t > lc.lastElute + 0.4){ lcFinish(); break; }
+    if (lc.t >= T_LIMIT){ lcFinish(); break; }
+  }
+  if (lc.t > lc.tView - 0.4) lc.tView = Math.ceil(lc.t + 1);
+}
+
+function resolutions(){
+  const r = lc.results; const out = [null];
+  for (let i = 1; i < r.length; i++) out.push((r[i].tR - r[i-1].tR) / (2 * (r[i].sT + r[i-1].sT)));
+  return out;
+}
+
+function lcFinish(){
+  lc.running = false;
+  const r = lc.results, left = lc.bands.filter(b => !b.eluted).map(b => b.c.name);
+  const rs = resolutions();
+  let s = '', warn = false;
+  if (r.length) s += `${r.length === 1 ? 'One compound' : r.length + ' compounds'} eluted, the last at ${r[r.length-1].tR.toFixed(2)} min.`;
+  if (r.length > 1){
+    let wi = 1; for (let i = 2; i < r.length; i++) if (rs[i] < rs[wi]) wi = i;
+    const R = rs[wi];
+    s += ` The closest pair is ${r[wi-1].c.name} and ${r[wi].c.name}, with resolution ${R.toFixed(2)}`;
+    if (R < 1){ s += ': they overlap. Lower the acetonitrile or use a longer column.'; warn = true; }
+    else if (R < 1.5){ s += ', close to baseline separation (1.5).'; }
+    else s += ', fully separated.';
+  }
+  if (left.length){ s += ` Still stuck on the column after ${T_LIMIT} min: ${left.join(', ')}. Raise the acetonitrile or use the ramp.`; warn = true; }
+  setLcMsg(s.trim(), warn ? 'warn' : '');
+}
+
+function renderTable(){
+  const tb = $('#lcTable');
+  if (!lc.results.length){ tb.innerHTML = `<tr><td colspan="5" style="text-align:left;color:var(--muted)">Peaks appear here as they reach the detector.</td></tr>`; return; }
+  const rs = resolutions();
+  tb.innerHTML = lc.results.map((r, i) => `<tr>
+    <td><span class="dot" style="background:var(--${r.c.col})"></span>${r.c.name}</td>
+    <td>${r.tR.toFixed(2)} min</td><td>${r.k.toFixed(2)}</td><td>${fmt(Math.round(r.N))}</td>
+    <td class="${rs[i] !== null && rs[i] < 1 ? 'bad' : ''}">${rs[i] === null ? '–' : rs[i].toFixed(2)}</td></tr>`).join('');
+}
+
+function drawColumn(){
+  const o = canvases.column; if (!o) return; const {ctx, w, h} = o;
+  ctx.clearRect(0, 0, w, h);
+  const narrow = w < 520;
+  const x0 = narrow ? 46 : 78, x1 = w - (narrow ? 74 : 112), cy = h * 0.42, th = 30;
+  const pxcm = (x1 - x0) / lc.L;
+  ctx.lineWidth = 2; ctx.strokeStyle = PAL.muted;
+  line(ctx, 0, cy, x0, cy);
+  // injector valve
+  ctx.fillStyle = PAL.surface; ctx.beginPath(); ctx.arc(x0 - (narrow ? 22 : 34), cy, 10, 0, 6.283); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = PAL.muted; ctx.font = FONT; ctx.textAlign = 'center';
+  ctx.fillText('Injector', x0 - (narrow ? 22 : 34), cy + 30);
+  // column body
+  rrect(ctx, x0, cy - th / 2, x1 - x0, th, 6); ctx.fillStyle = PAL.glass; ctx.fill();
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = PAL.bed;
+  for (const [a, b] of bedDots){ ctx.beginPath(); ctx.arc(x0 + a * (x1 - x0), cy - th / 2 + b * th, 1.6, 0, 6.283); ctx.fill(); }
+  // bands
+  const H = Hcm();
+  lc.bands.forEach(b => {
+    if (b.x <= 0 || b.gone && b.x > lc.L * 1.5) return;
+    const sx = Math.sqrt(H * Math.max(b.x, 0.02));
+    const X = x0 + b.x * pxcm, sp = Math.max(1.6, sx * pxcm);
+    const peak = Math.min(1, b.c.amt * 0.05 / sx);
+    ctx.fillStyle = PAL[b.c.col];
+    for (let px = Math.floor(X - 3.5 * sp); px <= X + 3.5 * sp; px++){
+      if (px < x0 || px > x1) continue;
+      const g = Math.exp(-((px + 0.5 - X) ** 2) / (2 * sp * sp));
+      ctx.globalAlpha = Math.min(0.92, 0.1 + 0.9 * peak) * g;
+      ctx.fillRect(px, cy - th / 2, 1.05, th);
+    }
+  });
+  ctx.globalAlpha = 1;
+  // solvent front
+  const fx = u0() * lc.t;
+  if ((lc.running || lc.T.length) && fx < lc.L){
+    ctx.strokeStyle = PAL.accent; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.5;
+    line(ctx, x0 + fx * pxcm, cy - th / 2, x0 + fx * pxcm, cy + th / 2); ctx.setLineDash([]);
+  }
+  ctx.restore();
+  rrect(ctx, x0, cy - th / 2, x1 - x0, th, 6); ctx.strokeStyle = PAL.ink; ctx.lineWidth = 1.5; ctx.stroke();
+  // detector
+  const dx = x1 + 14, dw = narrow ? 44 : 64;
+  ctx.strokeStyle = PAL.muted; ctx.lineWidth = 2; line(ctx, x1, cy, dx, cy); line(ctx, dx + dw, cy, w, cy);
+  const sig = lc.Y.length ? Math.max(0, lc.Y[lc.Y.length - 1]) : 0;
+  rrect(ctx, dx, cy - 20, dw, 40, 6); ctx.fillStyle = PAL.surface; ctx.fill();
+  ctx.fillStyle = withAlpha(PAL.accent, Math.min(0.75, sig / Math.max(lc.yMax, 1) * 0.75)); ctx.fill();
+  ctx.strokeStyle = PAL.ink; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = PAL.ink; ctx.font = FONTB; ctx.fillText('UV', dx + dw / 2, cy + 4);
+  ctx.fillStyle = PAL.muted; ctx.font = FONT; ctx.fillText('Detector', dx + dw / 2, cy + 38);
+  ctx.textAlign = 'left';
+  ctx.fillText(`Column: ${lc.L} cm, ${lc.dp} µm C18 particles`, x0, cy + th / 2 + 22);
+  // scale marks
+  ctx.strokeStyle = PAL.line; ctx.lineWidth = 1;
+  for (let c = 0; c <= lc.L; c += 5){ const X = x0 + c * pxcm; line(ctx, X, cy - th / 2 - 6, X, cy - th / 2 - 2); }
+  ctx.textAlign = 'right'; ctx.fillStyle = PAL.muted;
+  ctx.fillText('Flow', x0 - 2, cy - th / 2 - 8 > 10 ? cy - th / 2 - 8 : 12);
+  ctx.textAlign = 'left';
+}
+
+function drawChrom(){
+  const o = canvases.chrom; if (!o) return; const {ctx, w, h} = o;
+  ctx.clearRect(0, 0, w, h);
+  const l = 52, r = 48, t = 14, b = 34, pw = w - l - r, ph = h - t - b;
+  const tmax = lc.tView, ymax = Math.max(6, lc.yMax * 10 * 1.15);
+  const X = tt => l + tt / tmax * pw, Y = v => t + ph - (v * 10) / ymax * ph;
+  ctx.font = FONT; ctx.lineWidth = 1;
+  const st = niceStep(tmax / Math.max(3, pw / 70));
+  ctx.textAlign = 'center';
+  for (let x = 0; x <= tmax + 1e-9; x += st){
+    const px = X(x); ctx.strokeStyle = PAL.line; line(ctx, px, t, px, t + ph);
+    ctx.fillStyle = PAL.muted; ctx.fillText(fmt(x, st < 1 ? 1 : 0), px, t + ph + 16);
+  }
+  ctx.fillText('Time (min)', l + pw / 2, h - 2);
+  const sy = niceStep(ymax / 4); ctx.textAlign = 'right';
+  for (let v = 0; v <= ymax + 1e-9; v += sy){
+    const py = t + ph - v / ymax * ph; ctx.strokeStyle = PAL.line; line(ctx, l, py, l + pw, py);
+    ctx.fillStyle = PAL.muted; ctx.fillText(fmt(v), l - 6, py + 4);
+  }
+  ctx.save(); ctx.translate(13, t + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText('Absorbance (mAU)', 0, 0); ctx.restore();
+  // solvent program on right axis
+  ctx.strokeStyle = PAL.muted; ctx.setLineDash([4, 4]); ctx.beginPath();
+  for (let px = 0; px <= pw; px += 3){ const tt = px / pw * tmax; const yy = t + ph - phiAt(tt) * ph; px === 0 ? ctx.moveTo(l + px, yy) : ctx.lineTo(l + px, yy); }
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.textAlign = 'left'; ctx.fillStyle = PAL.muted;
+  [0, 50, 100].forEach(p => ctx.fillText(p + '%', l + pw + 6, t + ph - p / 100 * ph + 4));
+  ctx.save(); ctx.translate(w - 8, t + ph / 2); ctx.rotate(Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText('Acetonitrile (dashed)', 0, 0); ctx.restore();
+  // traces
+  const N = lc.T.length;
+  if (N > 1){
+    const step = Math.max(1, Math.floor(N / (pw * 1.5)));
+    ctx.save(); ctx.beginPath(); ctx.rect(l, t, pw, ph); ctx.clip();
+    lc.bands.forEach((bd, j) => {
+      ctx.beginPath(); ctx.moveTo(X(lc.T[0]), Y(0));
+      for (let i = 0; i < N; i += step) ctx.lineTo(X(lc.T[i]), Y(lc.YB[j][i]));
+      ctx.lineTo(X(lc.T[N - 1]), Y(0)); ctx.closePath();
+      ctx.fillStyle = withAlpha(PAL[bd.c.col], 0.3); ctx.fill();
+    });
+    ctx.beginPath();
+    for (let i = 0; i < N; i += step) i === 0 ? ctx.moveTo(X(lc.T[i]), Y(lc.Y[i])) : ctx.lineTo(X(lc.T[i]), Y(lc.Y[i]));
+    ctx.lineTo(X(lc.T[N - 1]), Y(lc.Y[N - 1]));
+    ctx.strokeStyle = PAL.ink; ctx.lineWidth = 1.6; ctx.stroke();
+    if (lc.running){ ctx.strokeStyle = PAL.accent; ctx.lineWidth = 1; line(ctx, X(lc.t), t, X(lc.t), t + ph); }
+    ctx.restore();
+    // labels
+    ctx.font = FONTB; ctx.textAlign = 'center';
+    let lastX = -1e9, tier = 0;
+    lc.results.forEach(rr => {
+      const apex = rr.c.amt / (2.5066 * rr.sT);
+      const px = X(rr.tR); tier = (px - lastX < 84) ? tier + 1 : 0; lastX = px;
+      const py = Math.max(t + 12 + tier * 14, Y(apex) - 8 - tier * 14);
+      ctx.fillStyle = PAL.ink; ctx.fillText(rr.c.name, px, py);
+    });
+  } else {
+    ctx.fillStyle = PAL.muted; ctx.textAlign = 'center'; ctx.font = FONT;
+    ctx.fillText('Press "Inject sample" to start a run.', l + pw / 2, t + ph / 2);
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawVD(){
+  const o = canvases.vd; if (!o) return; const {ctx, w, h} = o;
+  ctx.clearRect(0, 0, w, h);
+  const l = 42, r = 10, t = 10, b = 32, pw = w - l - r, ph = h - t - b;
+  const umax = 5.5, Hmax = 80;
+  const X = u => l + u / umax * pw, Y = v => t + ph - Math.min(v, Hmax) / Hmax * ph;
+  ctx.font = FONT; ctx.fillStyle = PAL.muted; ctx.strokeStyle = PAL.line; ctx.lineWidth = 1;
+  ctx.textAlign = 'center';
+  for (let u = 0; u <= umax; u += 1){ line(ctx, X(u), t, X(u), t + ph); ctx.fillText(u, X(u), t + ph + 14); }
+  ctx.fillText('Flow velocity (mm/s)', l + pw / 2, h - 2);
+  ctx.textAlign = 'right';
+  for (let v = 0; v <= Hmax; v += 20){ line(ctx, l, Y(v), l + pw, Y(v)); ctx.fillText(v, l - 5, Y(v) + 4); }
+  ctx.save(); ctx.translate(10, t + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText('H (µm)', 0, 0); ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(l, t, pw, ph); ctx.clip();
+  [1.7, 3, 5, 10].forEach(dp => {
+    const cur = dp === lc.dp;
+    ctx.beginPath();
+    for (let u = 0.15; u <= umax; u += 0.05){ const y = Y(Hum(u, dp)); u === 0.15 ? ctx.moveTo(X(u), y) : ctx.lineTo(X(u), y); }
+    ctx.strokeStyle = cur ? PAL.accent : PAL.bed; ctx.lineWidth = cur ? 2.2 : 1.2; ctx.stroke();
+  });
+  ctx.restore();
+  const u = uMM(), Hc = Hum(u, lc.dp);
+  ctx.fillStyle = PAL.accent; ctx.beginPath(); ctx.arc(X(u), Y(Hc), 5, 0, 6.283); ctx.fill();
+  ctx.strokeStyle = PAL.surface; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = PAL.ink; ctx.font = FONTB; ctx.textAlign = X(u) > l + pw - 70 ? 'right' : 'left';
+  ctx.fillText(`${Hc.toFixed(0)} µm`, X(u) + (ctx.textAlign === 'left' ? 9 : -9), Math.max(t + 10, Y(Hc) - 8));
+  ctx.textAlign = 'left';
+}
+
+function drawLC(){ drawColumn(); drawChrom(); drawVD();
+  $('#lcTime').textContent = lc.t.toFixed(2) + ' min';
+  $('#lcPhiNow').textContent = Math.round(phiAt(lc.t) * 100) + '% acetonitrile';
+}
+
+// LC controls
+$('#lcChips').innerHTML = COMPOUNDS.map(c => `<label class="chip"><input type="checkbox" value="${c.id}" checked><span class="sw" style="--c:var(--${c.col})"></span>${c.name}</label>`).join('');
+$$('#lcChips input').forEach(i => i.addEventListener('change', () => { i.checked ? lc.sel.add(i.value) : lc.sel.delete(i.value); inject(); }));
+const bindRange = (id, fn) => { const el = $('#' + id); el.addEventListener('input', () => { fn(+el.value); updateReadouts(); drawVD(); if (!lc.running) drawChrom(); }); el.addEventListener('change', inject); };
+bindRange('phi', v => lc.phi = v / 100);
+bindRange('flow', v => lc.F = v);
+bindRange('len', v => lc.L = v);
+function segBind(sel, attr, fn, rerun = true){
+  $$(sel + ' button').forEach(b => b.addEventListener('click', () => {
+    $$(sel + ' button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    fn(b.dataset[attr]); updateReadouts(); drawVD(); if (rerun) inject();
+  }));
+}
+segBind('#lc [aria-label="Solvent program"]', 'mode', v => lc.mode = v);
+segBind('#dpSeg', 'dp', v => lc.dp = +v);
+segBind('#speedSeg', 'speed', v => lc.speed = +v, false);
+$('#injectBtn').addEventListener('click', inject);
+
+/* =====================================================================
+   MASS SPECTROMETRY
+   ===================================================================== */
+const PARTS = {
+  source: [
+    {id:'EI', name:'Electron ionization (EI)', short:'EI source', desc:'A beam of 70 eV electrons knocks an electron out of gas-phase molecules. It is a hard technique: lots of fragments, which give a fingerprint you can match against libraries. The sample must evaporate.'},
+    {id:'ESI', name:'Electrospray (ESI)', short:'Electrospray', desc:'The sample solution is sprayed from a needle held at several kilovolts. Charged droplets shrink until ions escape. Soft: molecules stay intact, mostly as [M+H]⁺, and large ones collect several charges.'},
+    {id:'MALDI', name:'MALDI', short:'MALDI', desc:'The sample is mixed with a light-absorbing matrix and dried on a plate. A laser pulse vaporizes a tiny spot and ionizes the molecules. Soft and mostly singly charged; matrix ions clutter the low-mass region.'}
+  ],
+  analyzer: [
+    {id:'Q', name:'Quadrupole', short:'Quadrupole', desc:'Four rods carry RF and DC voltages so that only one m/z has a stable path through. Sweeping the voltages scans the spectrum one m/z at a time. Robust and cheap, with unit resolution.'},
+    {id:'TOF', name:'Time of flight (TOF)', short:'Time of flight', desc:'Ions get the same kinetic energy and race down a field-free tube. Light ions arrive first. Every pulse records the whole spectrum, and resolution is high.'},
+    {id:'B', name:'Magnetic sector', short:'Magnetic sector', desc:'A magnetic field bends the ion beam; the radius depends on m/z. Scanning the field brings each m/z onto the detector slit in turn. Double-focusing designs reach very high resolution.'}
+  ],
+  detector: [
+    {id:'EM', name:'Electron multiplier', short:'Electron multiplier', desc:'Each ion that hits the first dynode releases electrons, which cascade down a chain of dynodes. A gain of around a million lets it see very small signals.'},
+    {id:'FC', name:'Faraday cup', short:'Faraday cup', desc:'A metal cup collects the ions and the current is measured directly. Very stable and accurate for ratios, but with no amplification, weak peaks disappear into the noise.'}
+  ]
+};
+const ICONS = {
+  EI:'<svg class="ico" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="24" height="14" rx="2"/><path d="M6 6l2 2 2-2 2 2 2-2 2 2 2-2 2 2" /><path d="M14 9v6" stroke-dasharray="2 2"/></svg>',
+  ESI:'<svg class="ico" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 8h10l4 2-4 2H2"/><circle cx="20" cy="7" r="1"/><circle cx="23" cy="10" r="1"/><circle cx="20" cy="13" r="1"/><circle cx="25" cy="6" r="1"/></svg>',
+  MALDI:'<svg class="ico" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="2" width="4" height="16"/><path d="M24 2L8 10"/><circle cx="8" cy="10" r="2"/></svg>',
+  Q:'<svg class="ico" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="6" r="3"/><circle cx="19" cy="6" r="3"/><circle cx="9" cy="14" r="3"/><circle cx="19" cy="14" r="3"/></svg>',
+  TOF:'<svg class="ico" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="5" width="24" height="10" rx="2"/><circle cx="8" cy="10" r="1.2"/><circle cx="14" cy="10" r="1.2"/><circle cx="21" cy="10" r="1.2"/></svg>',
+  B:'<svg class="ico" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 18A15 15 0 0 1 18 3"/><path d="M8 18A10 10 0 0 1 18 8"/></svg>',
+  EM:'<svg class="ico" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4l22 4v4L3 16z"/><path d="M8 8l3 4 3-4 3 4 3-4"/></svg>',
+  FC:'<svg class="ico" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h16v14H6"/><path d="M2 10h8"/></svg>'
+};
+
+const SAMPLES = [
+  {id:'ethanol', name:'Ethanol', formula:'C₂H₆O'},
+  {id:'toluene', name:'Toluene', formula:'C₇H₈'},
+  {id:'caffeine', name:'Caffeine', formula:'C₈H₁₀N₄O₂'},
+  {id:'angio', name:'Angiotensin II', formula:'peptide, C₅₀H₇₁N₁₃O₁₂'}
+];
+const MATRIX = [[190.0499, 100, 10, '[CHCA+H]⁺'], [172.0393, 45, 10, '[CHCA+H−H₂O]⁺'], [212.0318, 22, 10, '[CHCA+Na]⁺'], [379.0925, 28, 20, '[2CHCA+H]⁺']];
+
+function ionsFor(s, src){
+  if (src === 'EI'){
+    if (s === 'ethanol') return {scale:1, list:[[31.0178,100,1,1,'CH₂OH⁺'],[45.0335,52,2,1,'[M−H]⁺'],[46.0413,22,2,1,'M⁺•'],[29.0386,24,2,1,'C₂H₅⁺'],[27.0229,20,2,1,'C₂H₃⁺'],[15.0229,7,1,1,'CH₃⁺']],
+      notes:['EI knocks an electron out of ethanol, giving the radical cation M⁺• at m/z 46. It falls apart easily: the tallest peak (the base peak) at m/z 31 is CH₂OH⁺, formed when the C–C bond breaks.']};
+    if (s === 'toluene') return {scale:1, list:[[91.0542,100,7,1,'C₇H₇⁺ (tropylium)'],[92.0621,73,7,1,'M⁺•'],[65.0386,12,5,1,'C₅H₅⁺'],[39.0229,10,3,1,'C₃H₃⁺'],[63.0229,5,5,1,'']],
+      notes:['The base peak at m/z 91 is C₇H₇⁺, which rearranges into the very stable seven-membered tropylium ring. The molecular ion at m/z 92 is strong because an aromatic ring holds a positive charge well.']};
+    if (s === 'caffeine') return {scale:1, list:[[194.0798,100,8,1,'M⁺•'],[109.0509,55,5,1,''],[82.0400,38,4,1,''],[67.0291,24,3,1,''],[55.0291,30,2,1,'']],
+      notes:['The molecular ion at m/z 194 is the base peak. The fragments at 109, 82, 67 and 55 come from the ring system breaking up. GC-MS libraries identify unknowns by matching exactly this kind of pattern.']};
+    return {scale:0.25, list:[[18.0106,30,0,1,'H₂O⁺•'],[28.0061,25,0,1,''],[30.0338,40,1,1,''],[44.0495,100,2,1,''],[56.0495,35,3,1,''],[70.0651,45,4,1,''],[86.0964,30,5,1,''],[91.0542,25,7,1,''],[107.0491,15,7,1,''],[120.0808,20,8,1,''],[136.0757,12,8,1,'']],
+      notes:['A peptide cannot be evaporated intact. Heating it in the EI source breaks it into small thermal debris, so there is no molecular ion near m/z 1045 at all. Try a soft source such as electrospray or MALDI.']};
+  }
+  if (src === 'ESI'){
+    if (s === 'ethanol') return {scale:0.08, list:[[47.0491,35,2,1,'[M+H]⁺'],[69.0311,100,2,1,'[M+Na]⁺']],
+      notes:['Ethanol has no good place to hold an extra proton, so the electrospray signal is weak and the sodium adduct [M+Na]⁺ outgrows [M+H]⁺. Small volatile molecules are usually measured with EI instead.']};
+    if (s === 'toluene') return {scale:0, list:[],
+      notes:['Toluene is nonpolar with nothing to protonate, so electrospray cannot charge it. What you see is only detector noise. EI is the right source for this molecule.']};
+    if (s === 'caffeine') return {scale:1, list:[[195.0877,100,8,1,'[M+H]⁺'],[217.0696,14,8,1,'[M+Na]⁺']],
+      notes:['Soft ionization: caffeine picks up a proton and stays in one piece, so a single peak at m/z 195, [M+H]⁺, dominates. Compare this with EI, where the same molecule shatters into fragments.']};
+    return {scale:1, list:[[523.7745,100,50,2,'[M+2H]²⁺'],[349.5188,45,50,3,'[M+3H]³⁺'],[1046.5418,22,50,1,'[M+H]⁺']],
+      notes:['Electrospray adds several protons to a peptide, so the same molecule shows up at m/z 1046, 524 and 350. Zoom in on one of them: the isotope peaks are spaced by 1/z (1, 0.5 or 0.33), which tells you the charge.']};
+  }
+  // MALDI
+  if (s === 'ethanol') return {scale:1, list:[[47.0491,3,2,1,'[M+H]⁺']],
+    notes:['Ethanol evaporates in the vacuum before the laser fires, and the low-mass region is crowded with matrix ions anyway. MALDI is meant for large, non-volatile molecules.']};
+  if (s === 'toluene') return {scale:1, list:[],
+    notes:['Toluene evaporates off the plate in the vacuum, so only the matrix (CHCA) is left to ionize. Every peak here belongs to the matrix.']};
+  if (s === 'caffeine') return {scale:1, list:[[195.0877,55,8,1,'[M+H]⁺']],
+    notes:['Caffeine appears at m/z 195, but matrix ions at 172, 190, 212 and 379 crowd the same region. That interference is why MALDI is rarely used for small molecules.']};
+  return {scale:1, list:[[1046.5418,100,50,1,'[M+H]⁺'],[523.7745,6,50,2,'[M+2H]²⁺']],
+    notes:['MALDI makes almost only singly charged ions, so the peptide appears once, at m/z 1046 ([M+H]⁺). The small peaks below 400 come from the matrix.']};
+}
+
+const ms = { source:null, analyzer:null, detector:null, sample:'caffeine', running:false, p:0, data:null, view:null,
+  ions:[], sparks:[], flash:0, laser:0, pulseT:0, spawnAcc:0, g:null, scanMz:0, drag:null, hoverPx:null };
+const RUN_S = 6, TOF_PULSES = 10000;
+
+function partById(slot, id){ return PARTS[slot].find(p => p.id === id); }
+function ready(){ return ms.source && ms.analyzer && ms.detector; }
+
+function buildData(){
+  const r = ionsFor(ms.sample, ms.source);
+  const list = r.list.slice(); let scale = r.scale; const notes = r.notes.slice();
+  if (ms.source === 'MALDI'){ const f = ms.sample === 'angio' ? 0.35 : 1; MATRIX.forEach(m => list.push([m[0], m[1] * f, m[2], 1, m[3]])); }
+  if (ms.source === 'MALDI' && ms.analyzer !== 'TOF'){
+    scale *= 0.3;
+    notes.push('MALDI makes ions in short laser bursts, but a ' + (ms.analyzer === 'Q' ? 'quadrupole' : 'magnetic sector') + ' only lets one m/z through at a time and misses most of each burst. That is why MALDI is almost always paired with time of flight.');
+  }
+  const multi = list.some(p => p[3] > 1);
+  if (multi && ms.analyzer === 'Q') notes.push('The quadrupole has unit resolution, so the isotope peaks of the doubly and triply charged ions blur into one lump. Swap in time of flight and zoom in to see them separate.');
+  if (multi && ms.analyzer !== 'Q') notes.push('This analyzer resolves the isotope peaks. Drag across a single peak to zoom in and read the spacing.');
+  if (ms.detector === 'FC') notes.push('The Faraday cup has no amplification, so the noise floor is high and small peaks sink into it. An electron multiplier would bring them out.');
+
+  const peaks = [];
+  list.forEach(([mz, rel, nC, z, label]) => {
+    const lam = nC * 0.0107; let pk = 1;
+    for (let k = 0; k < 5; k++){
+      if (k > 0) pk *= lam / k;
+      const hh = rel * pk; if (k > 0 && hh < 0.05) break;
+      peaks.push({mz:mz + k * 1.00336 / z, h:hh, z, label, iso:k});
+    }
+  });
+  const R = ms.analyzer === 'TOF' ? 8000 : 15000;
+  const fw = m => ms.analyzer === 'Q' ? 0.7 : m / R;
+  peaks.forEach(p => { p.fw = fw(p.mz); p.s = p.fw / 2.355; });
+  const prof = m => { let s = 0; for (const p of peaks){ const d = m - p.mz; if (d > -6 * p.s && d < 6 * p.s) s += p.h * Math.exp(-d * d / (2 * p.s * p.s)); } return s; };
+  let maxT = 0; peaks.forEach(p => { maxT = Math.max(maxT, prof(p.mz)); });
+  const mzs = peaks.map(p => p.mz);
+  const lo = mzs.length ? Math.min(...mzs) : 10, hi = mzs.length ? Math.max(...mzs) : 200;
+  const m0 = Math.max(0, Math.floor((lo - 15) / 10) * 10), m1 = Math.max(m0 + 100, Math.ceil((hi + 20) / 50) * 50);
+  const noiseRel = ms.detector === 'FC' ? 3 : 0.4;
+  const noiseAbs = maxT > 0 ? noiseRel / 100 * maxT : 1;
+  const sig = maxT * scale;
+  const norm = Math.max(sig, noiseAbs * 6);
+  const base = peaks.filter(p => p.iso === 0 && p.h * scale > 0.5);
+  const tot = base.reduce((a, p) => a + p.h, 0);
+  return {peaks, prof, maxT, scale, noiseAbs, norm, m0, m1, notes, base, tot, minMz: lo};
+}
+
+function renderNotes(){
+  const n = $('#msNotes');
+  if (!ms.data){ n.innerHTML = ''; return; }
+  n.innerHTML = ms.data.notes.map(t => `<div class="note">${t}</div>`).join('');
+}
+
+function startAcq(){
+  if (!ready()) return;
+  ms.data = buildData(); ms.view = [ms.data.m0, ms.data.m1];
+  ms.p = 0; ms.running = true; ms.ions = []; ms.sparks = []; ms.pulseT = 0; ms.spawnAcc = 0;
+  renderNotes();
+  if (reduceMotion){ ms.p = 1; ms.running = false; setStatus(); drawSpec(); drawAnim(); return; }
+  startLoop();
+}
+
+function setStatus(){
+  const s = $('#msStatus'), btn = $('#recordBtn');
+  btn.disabled = !ready();
+  if (!ready()){
+    const missing = ['source', 'analyzer', 'detector'].filter(k => !ms[k]).map(k => ({source:'an ion source', analyzer:'a mass analyzer', detector:'a detector'})[k]);
+    s.textContent = 'Still needed: ' + missing.join(', ') + '.'; return;
+  }
+  if (ms.running){
+    if (ms.analyzer === 'TOF') s.textContent = `Pulses summed: ${fmt(Math.round(Math.max(1, ms.p * TOF_PULSES)))}`;
+    else s.textContent = `${ms.analyzer === 'Q' ? 'Scanning the rods' : 'Scanning the magnet'}, m/z ${fmt(ms.scanMz, 0)} passing`;
+  } else if (ms.data) s.textContent = 'Spectrum recorded.';
+  else s.textContent = 'Ready to record.';
+}
+
+// Build parts UI
+const groupNames = {source:'Ion sources', analyzer:'Mass analyzers', detector:'Detectors'};
+$('#partGroups').innerHTML = Object.keys(PARTS).map(slot => `
+  <div class="part-group"><h4>${groupNames[slot]}</h4><div class="parts">
+  ${PARTS[slot].map(p => `<button type="button" class="part" draggable="true" data-slot="${slot}" data-id="${p.id}" aria-pressed="false">${ICONS[p.id]}<span>${p.name}</span></button>`).join('')}
+  </div></div>`).join('');
+$('#sampleSeg').innerHTML = SAMPLES.map(s => `<button type="button" data-sample="${s.id}" aria-pressed="${s.id === ms.sample}" title="${s.formula}">${s.name}</button>`).join('');
+
+function showInfo(slot, id){ const p = partById(slot, id); $('#partInfo').innerHTML = `<b>${p.name}</b>${p.desc}`; }
+function install(slot, id){
+  ms[slot] = id; showInfo(slot, id); refreshSlots(); changed();
+}
+function refreshSlots(){
+  $$('.slot').forEach(el => {
+    const slot = el.dataset.slot, id = ms[slot];
+    el.classList.toggle('filled', !!id);
+    el.querySelector('.name').textContent = id ? partById(slot, id).name : 'Empty';
+  });
+  $$('.part').forEach(b => b.setAttribute('aria-pressed', ms[b.dataset.slot] === b.dataset.id ? 'true' : 'false'));
+}
+function changed(){
+  ms.running = false; ms.data = null; ms.ions = []; ms.sparks = [];
+  renderNotes(); setStatus(); drawAnim(); drawSpec();
+  if (ready()) startAcq();
+}
+$$('.part').forEach(b => {
+  b.addEventListener('click', () => install(b.dataset.slot, b.dataset.id));
+  b.addEventListener('mouseenter', () => showInfo(b.dataset.slot, b.dataset.id));
+  b.addEventListener('focus', () => showInfo(b.dataset.slot, b.dataset.id));
+  b.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', b.dataset.slot + ':' + b.dataset.id); e.dataTransfer.effectAllowed = 'copy';
+    $(`.slot[data-slot="${b.dataset.slot}"]`).classList.add('target');
+  });
+  b.addEventListener('dragend', () => $$('.slot').forEach(s => s.classList.remove('target')));
+});
+$$('.slot').forEach(el => {
+  el.addEventListener('dragover', e => { if (el.classList.contains('target')){ e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+  el.addEventListener('drop', e => {
+    e.preventDefault(); const [slot, id] = e.dataTransfer.getData('text/plain').split(':');
+    $$('.slot').forEach(s => s.classList.remove('target'));
+    if (slot === el.dataset.slot) install(slot, id);
+  });
+  el.querySelector('.rm').addEventListener('click', () => { ms[el.dataset.slot] = null; refreshSlots(); changed(); });
+});
+$$('#sampleSeg button').forEach(b => b.addEventListener('click', () => {
+  ms.sample = b.dataset.sample;
+  $$('#sampleSeg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  changed();
+}));
+$('#recordBtn').addEventListener('click', startAcq);
+$('#zoomReset').addEventListener('click', () => { if (ms.data){ ms.view = [ms.data.m0, ms.data.m1]; drawSpec(); } });
+
+// ---------- instrument animation ----------
+function msGeom(w, h){
+  const g = {w, h};
+  g.srcX0 = 12; g.srcX1 = Math.max(80, Math.min(150, w * 0.17));
+  g.anX0 = g.srcX1 + 16;
+  if (ms.analyzer === 'B'){
+    g.cy = h * 0.82; g.r0 = Math.min(h * 0.56, w * 0.45);
+    g.E = {x:g.anX0 + 14, y:g.cy}; g.C0 = {x:g.E.x, y:g.cy - g.r0};
+    g.hitY = g.C0.y - 8; g.detX = g.E.x + g.r0; g.anX1 = g.detX + 24;
+  } else {
+    g.cy = h * 0.5; g.anX1 = w - Math.max(64, w * 0.12); g.detX = g.anX1 + 8;
+  }
+  return g;
+}
+function hue(mz){
+  const d = ms.data; const f = d ? (mz - d.m0) / Math.max(1, d.m1 - d.m0) : 0.5;
+  return `hsl(${Math.round(205 - 185 * Math.max(0, Math.min(1, f)))} 78% 52%)`;
+}
+function dashedBox(ctx, x, y, w, h, label){
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = PAL.muted; ctx.lineWidth = 1.2; rrect(ctx, x, y, w, h, 8); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = PAL.muted; ctx.font = FONT; ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y + h / 2 + 4); ctx.textAlign = 'left';
+}
+function drawSource(ctx, g){
+  const x0 = g.srcX0, x1 = g.srcX1, cy = g.cy, bw = x1 - x0;
+  if (!ms.source){ dashedBox(ctx, x0, cy - 30, bw, 60, 'Ion source'); return; }
+  ctx.strokeStyle = PAL.ink; ctx.fillStyle = PAL.surface; ctx.lineWidth = 1.5;
+  if (ms.source === 'EI'){
+    rrect(ctx, x0, cy - 30, bw, 60, 6); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); for (let i = 0; i <= 8; i++){ const x = x0 + bw * 0.3 + i * bw * 0.05; ctx.lineTo(x, cy - 22 + (i % 2) * 6); } ctx.strokeStyle = PAL.warn; ctx.stroke();
+    ctx.setLineDash([3, 3]); ctx.strokeStyle = PAL.accent; line(ctx, x0 + bw * 0.5, cy - 14, x0 + bw * 0.5, cy + 26); ctx.setLineDash([]);
+    ctx.fillStyle = PAL.muted; ctx.font = FONT; ctx.fillText('e⁻', x0 + bw * 0.5 + 5, cy + 22);
+  } else if (ms.source === 'ESI'){
+    ctx.beginPath(); ctx.moveTo(x0, cy - 7); ctx.lineTo(x0 + bw * 0.45, cy - 2); ctx.lineTo(x0 + bw * 0.52, cy); ctx.lineTo(x0 + bw * 0.45, cy + 2); ctx.lineTo(x0, cy + 7); ctx.closePath();
+    ctx.fillStyle = PAL.glass; ctx.fill(); ctx.stroke();
+    ctx.fillStyle = PAL.accent;
+    for (let i = 0; i < 14; i++){ const t = hash(i * 5.3 + Math.floor(performance.now() / 120) * 0.17); const r = hash(i * 1.7);
+      const x = x0 + bw * 0.55 + t * bw * 0.42, y = cy + (r - 0.5) * t * 34; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, 6.283); ctx.fill(); }
+  } else {
+    ctx.fillStyle = PAL.glass; ctx.fillRect(x0, cy - 32, 9, 64); ctx.strokeRect(x0, cy - 32, 9, 64);
+    ctx.strokeStyle = withAlpha(PAL.warn.startsWith('#') ? PAL.warn : '#B3261E', 0.35 + 0.65 * ms.laser); ctx.lineWidth = 2;
+    line(ctx, x1, cy - 40 < 4 ? 4 : cy - 40, x0 + 10, cy);
+    if (ms.laser > 0){ ctx.fillStyle = withAlpha('#FFB300', ms.laser); ctx.beginPath(); ctx.arc(x0 + 11, cy, 7 * ms.laser + 2, 0, 6.283); ctx.fill(); }
+  }
+  ctx.fillStyle = PAL.muted; ctx.font = FONT; ctx.textAlign = 'center';
+  ctx.fillText(partById('source', ms.source).short, x0 + bw / 2, cy + 46); ctx.textAlign = 'left';
+}
+function drawAnalyzer(ctx, g){
+  const cy = g.cy;
+  if (!ms.analyzer){ dashedBox(ctx, g.anX0, cy - 30, g.anX1 - g.anX0, 60, 'Mass analyzer'); return; }
+  ctx.lineWidth = 1.5; ctx.strokeStyle = PAL.ink;
+  const lab = (t, x, y) => { ctx.fillStyle = PAL.muted; ctx.font = FONT; ctx.textAlign = 'center'; ctx.fillText(t, x, y); ctx.textAlign = 'left'; };
+  if (ms.analyzer === 'Q'){
+    const len = g.anX1 - g.anX0;
+    ctx.fillStyle = PAL.bed; rrect(ctx, g.anX0 + 6, cy - 30, len, 10, 5); ctx.fill(); rrect(ctx, g.anX0 + 6, cy + 20, len, 10, 5); ctx.fill();
+    ctx.fillStyle = PAL.glass; rrect(ctx, g.anX0, cy - 25, len, 11, 5); ctx.fill(); ctx.stroke(); rrect(ctx, g.anX0, cy + 14, len, 11, 5); ctx.fill(); ctx.stroke();
+    lab('Quadrupole rods (RF + DC)', (g.anX0 + g.anX1) / 2, cy + 46);
+  } else if (ms.analyzer === 'TOF'){
+    rrect(ctx, g.anX0, cy - 28, g.anX1 - g.anX0, 56, 6); ctx.fillStyle = PAL.surface; ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = PAL.accent; ctx.lineWidth = 3; line(ctx, g.anX0 + 7, cy - 20, g.anX0 + 7, cy + 20);
+    lab('Field-free flight tube', (g.anX0 + g.anX1) / 2, cy + 46);
+  } else {
+    const {E, C0, r0} = g;
+    ctx.strokeStyle = PAL.ink; line(ctx, g.srcX1, cy - 10, E.x, cy - 10); line(ctx, g.srcX1, cy + 10, E.x, cy + 10);
+    ctx.lineWidth = 30; ctx.strokeStyle = PAL.glass; ctx.beginPath(); ctx.arc(C0.x, C0.y, r0, Math.PI / 2, 0, true); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = PAL.ink;
+    ctx.beginPath(); ctx.arc(C0.x, C0.y, r0 - 15, Math.PI / 2, 0, true); ctx.stroke();
+    ctx.beginPath(); ctx.arc(C0.x, C0.y, r0 + 15, Math.PI / 2, 0, true); ctx.stroke();
+    ctx.globalAlpha = 0.18; ctx.fillStyle = PAL.accent; ctx.beginPath(); ctx.moveTo(C0.x, C0.y);
+    ctx.arc(C0.x, C0.y, r0 + 15, Math.PI / 2 - 0.25, 0.25, true); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    lab('Magnet', C0.x + r0 * 0.45, C0.y + r0 * 0.45);
+  }
+}
+function drawDetector(ctx, g){
+  const vertical = ms.analyzer === 'B';
+  if (!ms.detector){
+    if (vertical) dashedBox(ctx, g.detX - 26, Math.max(2, g.hitY - 46), 52, 44, 'Detector');
+    else dashedBox(ctx, g.detX, g.cy - 26, g.w - g.detX - 8, 52, 'Detector');
+    return;
+  }
+  ctx.save();
+  let len;
+  if (vertical){ ctx.translate(g.detX, g.hitY); ctx.rotate(-Math.PI / 2); len = Math.min(46, g.hitY - 2); }
+  else { ctx.translate(g.detX, g.cy); len = g.w - g.detX - 8; }
+  ctx.lineWidth = 1.5; ctx.strokeStyle = PAL.ink;
+  ctx.fillStyle = PAL.surface;
+  if (ms.detector === 'EM'){
+    ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(len, -22); ctx.lineTo(len, 22); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill();
+    if (ms.flash > 0){ ctx.fillStyle = withAlpha(PAL.accent.startsWith('#') ? PAL.accent : '#2445C8', ms.flash * 0.6); ctx.fill(); }
+    ctx.stroke();
+    ctx.beginPath(); for (let i = 0; i <= 6; i++) ctx.lineTo(4 + i * (len - 8) / 6, (i % 2 ? 7 : -7)); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(len, -18); ctx.lineTo(4, -18); ctx.lineTo(4, 18); ctx.lineTo(len, 18); ctx.lineTo(len, -18); ctx.fill();
+    if (ms.flash > 0){ ctx.fillStyle = withAlpha(PAL.accent.startsWith('#') ? PAL.accent : '#2445C8', ms.flash * 0.6); ctx.fill(); }
+    ctx.beginPath(); ctx.moveTo(4, -18); ctx.lineTo(len, -18); ctx.lineTo(len, 18); ctx.lineTo(4, 18); ctx.stroke();
+  }
+  ctx.restore();
+  ctx.fillStyle = PAL.muted; ctx.font = FONT; ctx.textAlign = 'center';
+  const name = partById('detector', ms.detector).short;
+  if (vertical){ ctx.textAlign = 'left'; ctx.fillText(name, g.detX + 28, Math.max(14, g.hitY - 20)); }
+  else ctx.fillText(name, g.detX + (g.w - g.detX) / 2, g.cy + 42);
+  ctx.textAlign = 'left';
+}
+function drawAnim(){
+  const o = canvases.msAnim; if (!o) return; const {ctx, w, h} = o;
+  ctx.clearRect(0, 0, w, h);
+  const g = msGeom(w, h); ms.g = g;
+  drawSource(ctx, g); drawAnalyzer(ctx, g); drawDetector(ctx, g);
+  for (const s of ms.sparks){ ctx.strokeStyle = withAlpha('#E65100', s.life); ctx.lineWidth = 1.5; line(ctx, s.x - 4, s.y - 4, s.x + 4, s.y + 4); line(ctx, s.x - 4, s.y + 4, s.x + 4, s.y - 4); }
+  for (const ion of ms.ions){ ctx.fillStyle = ion.col; ctx.beginPath(); ctx.arc(ion.x, ion.y, 3, 0, 6.283); ctx.fill(); }
+  if (!ready()){
+    ctx.fillStyle = PAL.muted; ctx.font = FONT; ctx.textAlign = 'center';
+    ctx.fillText('Ions travel from left to right through the vacuum.', w / 2, 16); ctx.textAlign = 'left';
+  }
+}
+function pickMz(){
+  const d = ms.data; let r = Math.random() * d.tot;
+  for (const p of d.base){ r -= p.h; if (r <= 0) return p.mz; }
+  return d.base[d.base.length - 1].mz;
+}
+function spawn(stage){
+  const g = ms.g, mz = pickMz();
+  const ion = {mz, col:hue(mz), stage, x:stage === 'tof' ? g.anX0 + 10 : g.srcX1 - 6, y:g.cy + (Math.random() - 0.5) * 6, ph:Math.random() * 6.28, A:2.5, th:0};
+  if (stage === 'tof'){ ion.v = (g.anX1 - g.anX0) / (0.5 * Math.sqrt(mz / ms.data.minMz)); }
+  ms.ions.push(ion);
+}
+function msUpdate(dt){
+  const g = ms.g, d = ms.data; if (!g) return;
+  if (ms.running && d){
+    ms.p = Math.min(1, ms.p + dt / RUN_S);
+    ms.scanMz = d.m0 + ms.p * (d.m1 - d.m0);
+    const canSpawn = d.base.length > 0;
+    if (ms.analyzer === 'TOF'){
+      ms.pulseT -= dt;
+      if (ms.pulseT <= 0){ ms.pulseT = 0.32; if (ms.source === 'MALDI') ms.laser = 1; if (canSpawn) for (let i = 0; i < 14; i++) spawn('tof'); }
+      if (ms.source !== 'MALDI' && canSpawn){ ms.spawnAcc += dt * 30; while (ms.spawnAcc >= 1){ spawn('feed'); ms.spawnAcc--; } }
+    } else if (canSpawn){
+      if (ms.source === 'MALDI'){ ms.pulseT -= dt; if (ms.pulseT <= 0){ ms.pulseT = 0.32; ms.laser = 1; for (let i = 0; i < 10; i++) spawn('src'); } }
+      else { ms.spawnAcc += dt * 45; while (ms.spawnAcc >= 1){ spawn('src'); ms.spawnAcc--; } }
+    }
+    if (ms.p >= 1){ ms.running = false; }
+    setStatus();
+  }
+  const tol = d ? Math.max(1.5, (d.m1 - d.m0) * 0.02) : 1;
+  const out = [];
+  for (const ion of ms.ions){
+    let dead = false;
+    if (ion.stage === 'feed' || ion.stage === 'src'){
+      ion.x += 260 * dt;
+      const stop = ms.analyzer === 'B' ? g.E.x : g.anX0;
+      if (ion.x >= stop){
+        if (ion.stage === 'feed') dead = true;
+        else { ion.stage = ms.analyzer === 'B' ? 'arc' : 'quad'; ion.ok = Math.abs(ion.mz - ms.scanMz) < tol;
+          if (ion.stage === 'arc'){ ion.r = ion.ok ? g.r0 : g.r0 * Math.sqrt(ion.mz / Math.max(1, ms.scanMz)); ion.y = g.cy; } }
+      }
+    } else if (ion.stage === 'quad'){
+      ion.x += 240 * dt; ion.ph += dt * 20;
+      if (!ion.ok) ion.A += 90 * dt;
+      ion.y = g.cy + ion.A * Math.sin(ion.ph);
+      if (Math.abs(ion.y - g.cy) > 13){ ms.sparks.push({x:ion.x, y:ion.y, life:1}); dead = true; }
+      else if (ion.x >= g.detX){ ms.flash = 1; dead = true; }
+    } else if (ion.stage === 'tof'){
+      ion.x += ion.v * dt;
+      if (ion.x >= g.detX){ ms.flash = 1; dead = true; }
+    } else if (ion.stage === 'arc'){
+      ion.th += 300 * dt / ion.r;
+      const th = Math.min(ion.th, Math.PI / 2);
+      ion.x = g.E.x + ion.r * Math.sin(th); ion.y = g.E.y - ion.r + ion.r * Math.cos(th);
+      const dd = Math.hypot(ion.x - g.C0.x, ion.y - g.C0.y);
+      if (Math.abs(dd - g.r0) > 13){ ms.sparks.push({x:ion.x, y:ion.y, life:1}); dead = true; }
+      else if (ion.th >= Math.PI / 2) ion.stage = 'up';
+    } else if (ion.stage === 'up'){
+      ion.y -= 300 * dt;
+      if (ion.y <= g.hitY){ ms.flash = 1; dead = true; }
+    }
+    if (!dead && ion.x < g.w + 20 && ion.y > -20) out.push(ion);
+  }
+  ms.ions = out;
+  ms.sparks.forEach(s => s.life -= dt * 2.5); ms.sparks = ms.sparks.filter(s => s.life > 0);
+  ms.flash = Math.max(0, ms.flash - dt * 4); ms.laser = Math.max(0, ms.laser - dt * 4);
+}
+
+// ---------- spectrum ----------
+const SP = {l:54, r:16, t:20, b:38};
+function specDecimals(){ return ms.analyzer === 'Q' ? 1 : 4; }
+function drawSpec(){
+  const o = canvases.spec; if (!o) return; const {ctx, w, h} = o;
+  ctx.clearRect(0, 0, w, h);
+  const {l, r, t, b} = SP, W = Math.max(10, Math.floor(w - l - r)), ph = h - t - b;
+  ctx.font = FONT; ctx.lineWidth = 1;
+  ctx.strokeStyle = PAL.line; ctx.fillStyle = PAL.muted; ctx.textAlign = 'right';
+  for (let v = 0; v <= 100; v += 25){ const y = t + ph - v / 100 * ph; line(ctx, l, y, l + W, y); ctx.fillText(v, l - 6, y + 4); }
+  ctx.save(); ctx.translate(13, t + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.fillText('Relative abundance (%)', 0, 0); ctx.restore();
+  if (!ms.data){
+    ctx.textAlign = 'center'; ctx.fillText(ready() ? 'Press "Record spectrum".' : 'Install a source, an analyzer and a detector to record a spectrum.', l + W / 2, t + ph / 2);
+    ctx.fillText('m/z', l + W / 2, h - 4); ctx.textAlign = 'left'; return;
+  }
+  const d = ms.data, [v0, v1] = ms.view, dm = (v1 - v0) / W;
+  // x ticks
+  const st = niceStep((v1 - v0) / Math.max(3, W / 90));
+  const dec = st < 1 ? Math.min(3, Math.ceil(-Math.log10(st))) : 0;
+  ctx.textAlign = 'center';
+  for (let x = Math.ceil(v0 / st) * st; x <= v1 + 1e-9; x += st){
+    const px = l + (x - v0) / (v1 - v0) * W; ctx.strokeStyle = PAL.line; line(ctx, px, t + ph, px, t + ph + 5);
+    ctx.fillStyle = PAL.muted; ctx.fillText(fmt(x, dec), px, t + ph + 18);
+  }
+  ctx.fillText('m/z', l + W / 2, h - 4);
+  // values
+  const tof = ms.analyzer === 'TOF';
+  const nMul = (tof && ms.running) ? Math.sqrt(TOF_PULSES / Math.max(25, ms.p * TOF_PULSES)) : 1;
+  const iMax = (!tof && ms.running) ? Math.floor((ms.scanMz - v0) / dm) : W - 1;
+  const vals = new Float32Array(W);
+  for (let i = 0; i < W; i++){ const m = v0 + (i + 0.5) * dm; vals[i] = d.prof(m) * d.scale; }
+  for (const p of d.peaks){ const i = Math.floor((p.mz - v0) / dm); if (i >= 0 && i < W){ const v = d.prof(p.mz) * d.scale; if (v > vals[i]) vals[i] = v; } }
+  for (let i = 0; i < W; i++){ const m = v0 + (i + 0.5) * dm; vals[i] += Math.abs(gn(Math.round(m * 40))) * d.noiseAbs * nMul; }
+  const yOf = v => t + ph - Math.min(1.04, v / d.norm) * ph;
+  const last = Math.min(W - 1, iMax);
+  if (last >= 0){
+    ctx.save(); ctx.beginPath(); ctx.rect(l, t - 2, W, ph + 2); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(l, t + ph);
+    for (let i = 0; i <= last; i++) ctx.lineTo(l + i + 0.5, yOf(vals[i]));
+    ctx.lineTo(l + last + 0.5, t + ph); ctx.closePath();
+    ctx.fillStyle = withAlpha(PAL.accent.startsWith('#') ? PAL.accent : '#2445C8', 0.14); ctx.fill();
+    ctx.beginPath();
+    for (let i = 0; i <= last; i++){ const x = l + i + 0.5; i === 0 ? ctx.moveTo(x, yOf(vals[i])) : ctx.lineTo(x, yOf(vals[i])); }
+    ctx.strokeStyle = PAL.accent; ctx.lineWidth = 1.3; ctx.stroke();
+    ctx.restore();
+  }
+  if (!tof && ms.running){ const px = l + iMax; ctx.strokeStyle = PAL.warn; ctx.lineWidth = 1; line(ctx, px, t, px, t + ph); }
+  // labels
+  const cands = [];
+  for (let i = 1; i < Math.min(W - 1, last); i++){
+    if (vals[i] >= vals[i - 1] && vals[i] >= vals[i + 1] && vals[i] / d.norm > 0.03){
+      const m = v0 + (i + 0.5) * dm;
+      let best = null;
+      for (const p of d.peaks){ if (Math.abs(p.mz - m) <= Math.max(1.5 * dm, p.fw)){ const hh = p.h * d.scale; if (!best || hh > best.h * d.scale) best = p; } }
+      if (best && best.h * d.scale > 0.3 * vals[i]) cands.push({i, v:vals[i], p:best});
+    }
+  }
+  cands.sort((a, b2) => b2.v - a.v);
+  const placed = [];
+  ctx.textAlign = 'center';
+  for (const c of cands){
+    if (placed.length >= 10) break;
+    const x = l + c.i + 0.5;
+    if (placed.some(px => Math.abs(px - x) < 58)) continue;
+    placed.push(x);
+    let sw = 0, sm = 0;
+    for (const p of d.peaks){ if (Math.abs(p.mz - c.p.mz) < c.p.fw * 0.75){ sw += p.h; sm += p.h * p.mz; } }
+    const mzc = sw ? sm / sw : c.p.mz;
+    const y = Math.max(t + 22, yOf(c.v) - 6);
+    ctx.fillStyle = PAL.ink; ctx.font = FONTB; ctx.fillText(fmt(mzc, specDecimals()), x, y);
+    if (c.p.label && c.p.iso === 0 && placed.length <= 6){ ctx.fillStyle = PAL.muted; ctx.font = FONT; ctx.fillText(c.p.label, x, y - 14); }
+  }
+  ctx.textAlign = 'left';
+  // drag selection
+  if (ms.drag && Math.abs(ms.drag.x1 - ms.drag.x0) > 2){
+    const a = Math.min(ms.drag.x0, ms.drag.x1), bb = Math.max(ms.drag.x0, ms.drag.x1);
+    ctx.fillStyle = withAlpha(PAL.accent.startsWith('#') ? PAL.accent : '#2445C8', 0.15); ctx.fillRect(a, t, bb - a, ph);
+  }
+}
+function specMzAt(clientX){
+  const o = canvases.spec, rect = o.cv.getBoundingClientRect(), W = o.w - SP.l - SP.r;
+  const x = Math.max(SP.l, Math.min(SP.l + W, clientX - rect.left));
+  return {x, mz:ms.view[0] + (x - SP.l) / W * (ms.view[1] - ms.view[0])};
+}
+const specCv = $('#spec');
+specCv.addEventListener('pointerdown', e => { if (!ms.data) return; specCv.setPointerCapture(e.pointerId); const {x} = specMzAt(e.clientX); ms.drag = {x0:x, x1:x}; });
+specCv.addEventListener('pointermove', e => {
+  if (!ms.data) return;
+  const {x, mz} = specMzAt(e.clientX);
+  if (ms.drag){ ms.drag.x1 = x; drawSpec(); return; }
+  const W = canvases.spec.w - SP.l - SP.r, perPx = (ms.view[1] - ms.view[0]) / W;
+  let best = null;
+  for (const p of ms.data.peaks){ const dd = Math.abs(p.mz - mz); if (dd < 6 * perPx + p.fw && p.h * ms.data.scale > 0.2 && (!best || p.h > best.h)) best = p; }
+  const info = $('#specInfo');
+  if (best){
+    const ab = best.h * ms.data.scale / ms.data.norm * 100;
+    info.textContent = `m/z ${fmt(best.mz, 4)}, charge ${best.z}+${best.label ? ', ' + best.label : ''}${best.iso ? ' with ' + best.iso + '× ¹³C' : ''}, relative abundance ${ab.toFixed(1)}%`;
+  } else info.textContent = `m/z ${fmt(mz, specDecimals())}`;
+});
+function endDrag(){
+  if (!ms.drag) return;
+  const W = canvases.spec.w - SP.l - SP.r;
+  const a = Math.min(ms.drag.x0, ms.drag.x1), b = Math.max(ms.drag.x0, ms.drag.x1);
+  if (b - a > 6){
+    const [v0, v1] = ms.view; const n0 = v0 + (a - SP.l) / W * (v1 - v0), n1 = v0 + (b - SP.l) / W * (v1 - v0);
+    if (n1 - n0 > 0.02) ms.view = [n0, n1];
+  }
+  ms.drag = null; drawSpec();
+}
+specCv.addEventListener('pointerup', endDrag);
+specCv.addEventListener('pointercancel', () => { ms.drag = null; drawSpec(); });
+specCv.addEventListener('dblclick', () => { if (ms.data){ ms.view = [ms.data.m0, ms.data.m1]; drawSpec(); } });
+specCv.addEventListener('pointerleave', () => { if (!ms.drag) $('#specInfo').textContent = 'Drag across the spectrum to zoom in. Double-click to zoom out.'; });
+
+/* =====================================================================
+   LOOP + LAYOUT
+   ===================================================================== */
+let rafId = null, lastTs = 0;
+function msActive(){ return ms.running || ms.ions.length || ms.sparks.length || ms.flash > 0 || ms.laser > 0; }
+function frame(ts){
+  const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016); lastTs = ts;
+  if (lc.running){ lcStep(dt * SIM_RATE * lc.speed); drawLC(); }
+  const msWas = msActive();
+  if (msWas){ msUpdate(dt); drawAnim(); drawSpec(); }
+  if (lc.running || msActive()) rafId = requestAnimationFrame(frame);
+  else { rafId = null; if (msWas){ setStatus(); drawSpec(); drawAnim(); } }
+}
+function startLoop(){ if (!rafId){ lastTs = performance.now(); rafId = requestAnimationFrame(frame); } }
+
+function layout(){ ['column', 'chrom', 'vd', 'msAnim', 'spec'].forEach(fit); drawLC(); drawAnim(); drawSpec(); }
+const ro = new ResizeObserver(() => layout());
+['column', 'chrom', 'vd', 'msAnim', 'spec'].forEach(id => ro.observe(document.getElementById(id)));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readPal(); layout(); });
+
+updateReadouts(); renderTable(); setStatus(); layout();
+setTimeout(inject, 400);
+})();
+</script>
+</body>
+</html>
